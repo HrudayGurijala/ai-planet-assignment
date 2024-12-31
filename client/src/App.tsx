@@ -1,17 +1,21 @@
-import React from "react";
+import  { useState } from 'react';
+import FileUpload from './components/FileUpload';
+import ChatQA from './components/ChatQA';
 
+const App = () => {
+  const [websocket, setWebSocket] = useState<WebSocket | null>(null);
 
-//components
-import FileUpload from "./components/FileUpload";
+  return (
+    <div>
+      <h1>Chat with Document</h1>
 
-const App: React.FC = () => {
+      {/* File upload component */}
+      <FileUpload setWebSocket={setWebSocket}  />
 
-
-    return (
-        <div>
-          <FileUpload/>
-        </div>
-    );
+      {/* Chat component, only visible if PDF is uploaded */}
+       <ChatQA websocket={websocket} />
+    </div>
+  );
 };
 
 export default App;
