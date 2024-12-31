@@ -7,3 +7,7 @@
 
 ### work on the NLP preocessing 
 ### Q&A 
+
+
+# day 3
+### database part remaining 
