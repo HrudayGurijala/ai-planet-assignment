@@ -3,15 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import pymupdf
+import psycopg2
+from datetime import datetime
+from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
+
+
 
 load_dotenv()
 
 app = FastAPI()
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 # CORS configuration
 app.add_middleware(
@@ -43,32 +49,34 @@ def extract_text_from_pdf(file_path: str) -> str:
         raise Exception(f"Error extracting text from PDF: {str(e)}")
 
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    global current_document_text
-    
-    # Ensure the file is a PDF
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-
+def connect_to_db():
+    """Connect to the PostgreSQL database."""
     try:
-        # Save the file
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-        
-        # Extract text from PDF
-        current_document_text = extract_text_from_pdf(file_path)
-        
-        # Clean up the file after extracting text
-        os.remove(file_path)
-        
-        return {"message": f"File '{file.filename}' processed successfully!"}
-    
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+        raise Exception(f"Error connecting to the database: {str(e)}")
 
 
+@app.on_event("startup")
+async def startup():
+    """Create table if it doesn't exist."""
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS uploaded_files (
+            id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL,
+            uploaded_date DATE NOT NULL
+        );
+        """)
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error during startup: {str(e)}")
+        
 def get_answer(question: str, context: str) -> str:
     # Initialize ChatOpenAI
     llm = ChatOpenAI(temperature=0)
@@ -98,22 +106,62 @@ def get_answer(question: str, context: str) -> str:
     return res
 
 
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    global current_document_text
+
+    # Ensure the file is a PDF
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+
+    try:
+        # Save the file
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # Extract text from PDF (in memory only, not stored in DB)
+        current_document_text = extract_text_from_pdf(file_path)
+
+        # Store metadata in the database
+        conn = connect_to_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO uploaded_files (filename, uploaded_date)
+            VALUES (%s, %s)
+            """,
+            (file.filename, datetime.now().date()),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Clean up the file after extracting text
+        os.remove(file_path)
+
+        return {"message": f"File '{file.filename}' processed and metadata stored successfully!"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
+
 @app.websocket("/ask")
 async def websocket_endpoint(websocket: WebSocket):
     global current_document_text
-    
+
     await websocket.accept()
     print("WebSocket connected and waiting for questions.")
-    
+
     try:
         while True:
             data = await websocket.receive_text()
             print(f"Received message: {data}")
-            
+
             if not current_document_text:
                 await websocket.send_text("Error: Please upload a PDF file first.")
                 continue
-            
+
             try:
                 print("Processing the question...")
                 answer = get_answer(data, current_document_text)
