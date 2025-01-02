@@ -28,11 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Directory to save uploaded files
-# UPLOAD_DIR = "uploaded_files"
-# os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-UPLOAD_DIR = "/tmp/uploaded_files"
+UPLOAD_DIR = "uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Store the current document text in memory
@@ -125,6 +122,7 @@ async def upload_file(file: UploadFile = File(...)):
 
         # Extract text from PDF (in memory only, not stored in DB)
         current_document_text = extract_text_from_pdf(file_path)
+        print(f"Extracted text: {current_document_text[:100]}")  # Print the first 100 characters for debugging
 
         # Store metadata in the database
         conn = connect_to_db()
@@ -149,6 +147,7 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
 
 
+
 @app.websocket("/ask")
 async def websocket_endpoint(websocket: WebSocket):
     global current_document_text
@@ -162,6 +161,7 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"Received message: {data}")
 
             if not current_document_text:
+                print("No document text found, asking user to upload a PDF file.")
                 await websocket.send_text("Error: Please upload a PDF file first.")
                 continue
 
@@ -176,6 +176,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket disconnected")
     except Exception as e:
         print(f"Unexpected error in WebSocket handling: {str(e)}")
+
 
 
 # if __name__ == "__main__":
