@@ -57,7 +57,7 @@ const ChatQA: React.FC<ChatQAProps> = ({ websocket, pdfUploaded }) => {
 
   return (
     <>
-    
+        {/* alert dialog */}
       <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -72,6 +72,7 @@ const ChatQA: React.FC<ChatQAProps> = ({ websocket, pdfUploaded }) => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* chat */}
       <div className="relative h-[600px] w-full">
         <Card className="h-full border-0">
           <ScrollArea className="h-[calc(100%-70px)] p-4">
@@ -99,15 +100,16 @@ const ChatQA: React.FC<ChatQAProps> = ({ websocket, pdfUploaded }) => {
             ))}
             <div ref={bottomRef} />
           </ScrollArea>
-          
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white">
+
+            {/* input  */}
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white z-10">
             <div className="relative">
               <Input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder={pdfUploaded ? "Type your question..." : "Upload a PDF to start chatting"}
                 onKeyUp={(e) => e.key === 'Enter' && handleQuestionSubmit()}
-                className=" border-gray-200 p-7"
+                className="border-gray-200 p-7"
                 disabled={!pdfUploaded}
               />
               <Button 

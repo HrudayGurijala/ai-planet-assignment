@@ -11,15 +11,14 @@ from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 
-
 load_dotenv()
-
 app = FastAPI()
 
+# load environment variables
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
-port = int(os.environ.get("PORT", 8000))
 
+# cors
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -28,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+### handling the pdf upload and extracting the text
 
 UPLOAD_DIR = "uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -48,6 +48,8 @@ def extract_text_from_pdf(file_path: str) -> str:
     except Exception as e:
         raise Exception(f"Error extracting text from PDF: {str(e)}")
 
+
+# postgres implementation
 
 def connect_to_db():
     """Connect to the PostgreSQL database."""
@@ -76,6 +78,8 @@ async def startup():
         conn.close()
     except Exception as e:
         print(f"Error during startup: {str(e)}")
+        
+# processing response using Open AI
         
 def get_answer(question: str, context: str) -> str:
     # Initialize ChatOpenAI
@@ -120,9 +124,9 @@ async def upload_file(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Extract text from PDF (in memory only, not stored in DB)
+        # Extract text from PDF 
         current_document_text = extract_text_from_pdf(file_path)
-        print(f"Extracted text: {current_document_text[:100]}")  # Print the first 100 characters for debugging
+        # print(f"Extracted text: {current_document_text[:100]}")  # Print the first 100 characters for debugging
 
         # Store metadata in the database
         conn = connect_to_db()
@@ -161,7 +165,6 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"Received message: {data}")
 
             if not current_document_text:
-                print("No document text found, asking user to upload a PDF file.")
                 await websocket.send_text("Error: Please upload a PDF file first.")
                 continue
 
