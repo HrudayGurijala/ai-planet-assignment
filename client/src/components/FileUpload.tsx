@@ -19,13 +19,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded  }
       formData.append('file', file);
 
       try {
-        const response = await fetch('http://localhost:8000/upload', {
+        const response = await fetch('https://ai-planet-backend-mv31.onrender.com/upload', {
           method: 'POST',
           body: formData,
         });
 
         if (response.ok) {
-          const ws = new WebSocket('ws://localhost:8000/ask');
+          const ws = new WebSocket('ws://ai-planet-backend-mv31.onrender.com/ask');
           ws.onopen = () => console.log('WebSocket connected');
           ws.onerror = (error) => console.log('WebSocket Error:', error);
           ws.onclose = () => console.log('WebSocket closed');

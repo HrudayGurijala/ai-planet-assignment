@@ -57,6 +57,7 @@ const ChatQA: React.FC<ChatQAProps> = ({ websocket, pdfUploaded }) => {
 
   return (
     <>
+    
       <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -18,18 +18,22 @@ app = FastAPI()
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
+port = int(os.environ.get("PORT", 8000))
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Directory to save uploaded files
-UPLOAD_DIR = "uploaded_files"
+# UPLOAD_DIR = "uploaded_files"
+# os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+UPLOAD_DIR = "/tmp/uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Store the current document text in memory
@@ -175,6 +179,11 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"Unexpected error in WebSocket handling: {str(e)}")
 
 
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
