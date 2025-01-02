@@ -20,10 +20,9 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 port = int(os.environ.get("PORT", 8000))
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ai-planet-hruday.vercel.app/"],
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

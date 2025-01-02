@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
-import { Upload } from "lucide-react"
+import React, { useState, useEffect } from 'react';
+import { Upload } from "lucide-react";
 
 interface FileUploadProps {
-  setWebSocket: React.Dispatch<React.SetStateAction<WebSocket | null>>
+  setWebSocket: React.Dispatch<React.SetStateAction<WebSocket | null>>;
   setPdfUploaded: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded  }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded }) => {
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
 
+  // Clean up WebSocket connection on component unmount
+  useEffect(() => {
+    return () => {
+      if (wsConnection) {
+        wsConnection.close();
+      }
+    };
+  }, [wsConnection]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -18,7 +27,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded  }
       const formData = new FormData();
       formData.append('file', file);
 
-      //https://ai-planet-backend-mv31.onrender.com
       try {
         const response = await fetch('https://ai-planet-backend-mv31.onrender.com/upload', {
           method: 'POST',
@@ -26,11 +34,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded  }
         });
 
         if (response.ok) {
-          const ws = new WebSocket('wss://ai-planet-backend-mv31.onrender.com/ask');
-          ws.onopen = () => console.log('WebSocket connected');
-          ws.onerror = (error) => console.log('WebSocket Error:', error);
-          ws.onclose = () => console.log('WebSocket closed');
-          setWebSocket(ws);
+          // If WebSocket is already open, skip creating a new one
+          if (!wsConnection || wsConnection.readyState === WebSocket.CLOSED) {
+            const ws = new WebSocket('wss://ai-planet-backend-mv31.onrender.com/ask');
+            ws.onopen = () => {
+              console.log('WebSocket connected');
+            };
+            ws.onerror = (error) => {
+              console.log('WebSocket Error:', error);
+              setError('WebSocket connection failed.');
+            };
+            ws.onclose = () => console.log('WebSocket closed');
+            setWebSocket(ws);
+            setWsConnection(ws); // Store the WebSocket reference
+          }
+
           setError('');
           setPdfUploaded(true);
         } else {
@@ -59,7 +77,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ setWebSocket, setPdfUploaded  }
         id="file-upload"
         className="hidden"
       />
-        <label 
+      <label 
         htmlFor="file-upload" 
         className="flex items-center gap-2 cursor-pointer bg-white text-black px-4 py-2 rounded-md border border-black hover:bg-gray-50"
       >
